@@ -1,15 +1,17 @@
 """
-seeds.py — Local convenience wrapper around `flask seed`.
-
-On Render:  flask seed  (called by build.sh — no import path issues)
-Locally:    python seeds.py  OR  flask seed
+seeds.py — Local convenience wrapper. Delegates to `flask seed` CLI command.
+On Render, build.sh calls `FLASK_APP=wsgi.py flask seed` directly.
+Locally, run either:  python seeds.py   OR   flask seed
 """
-import subprocess
+import os
 import sys
+import subprocess
 
-if __name__ == "__main__":
-    result = subprocess.run(
-        [sys.executable, "-m", "flask", "seed"],
-        env={**__import__("os").environ, "FLASK_APP": "run.py"},
-    )
-    sys.exit(result.returncode)
+ROOT = os.path.dirname(os.path.abspath(__file__))
+
+result = subprocess.run(
+    [sys.executable, "-m", "flask", "seed"],
+    env={**os.environ, "FLASK_APP": "wsgi.py", "PYTHONPATH": ROOT},
+    cwd=ROOT,
+)
+sys.exit(result.returncode)
