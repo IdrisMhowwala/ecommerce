@@ -1,63 +1,46 @@
 """
-database.py — Unified DB layer supporting PostgreSQL (Render) and SQLite (local dev).
-
-PostgreSQL is used when DATABASE_URL starts with 'postgres'.
-SQLite is the automatic fallback for local development.
-
-Public API  (identical regardless of backend):
-    get_db()        → _DB wrapper
-    close_db(e)     → teardown_appcontext hook
-    init_db(app)    → idempotent schema creation
+database.py — PostgreSQL (Render) + SQLite (local dev) unified layer.
 """
 
-import os
 import sqlite3
 from flask import g, current_app
 
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Helpers
-# ─────────────────────────────────────────────────────────────────────────────
 
 def _is_postgres(url: str) -> bool:
     return url.startswith("postgres")
 
 
-def _fix_pg_url(url: str) -> str:
-    """Render supplies postgres:// — psycopg2 requires postgresql://."""
-    if url.startswith("postgres://"):
-        return url.replace("postgres://", "postgresql://", 1)
-    return url
+def _pg_url(url: str) -> str:
+    return url.replace("postgres://", "postgresql://", 1) if url.startswith("postgres://") else url
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Cursor wrapper
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Cursor wrapper ────────────────────────────────────────────────────────────
 
 class _Cursor:
-    """Normalises psycopg2 / sqlite3 cursor APIs."""
-
-    def __init__(self, raw, db_type: str):
+    def __init__(self, raw, db_type):
         self._raw     = raw
         self._db_type = db_type
 
     def fetchone(self):
-        return self._raw.fetchone()
+        row = self._raw.fetchone()
+        if row is None:
+            return None
+        # Wrap postgres RealDictRow so [0] numeric indexing works for COUNT(*) etc.
+        if self._db_type == "postgres" and not isinstance(row, _PGRow):
+            return _PGRow(row)
+        return row
 
     def fetchall(self):
-        return self._raw.fetchall()
+        rows = self._raw.fetchall()
+        if self._db_type == "postgres":
+            return [_PGRow(r) for r in rows]
+        return rows
 
     @property
     def lastrowid(self):
         if self._db_type == "postgres":
-            row = self._raw.fetchone()
-            if row is None:
-                return None
-            # RealDictRow → dict access; plain row → index 0
-            try:
-                return row["id"]
-            except (KeyError, TypeError):
-                return row[0]
+            # RETURNING id was appended — result is already consumed by fetchone in execute
+            return self._raw._lastid
         return self._raw.lastrowid
 
     @property
@@ -65,52 +48,62 @@ class _Cursor:
         return self._raw.rowcount
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Connection wrapper  (_DB)
-# ─────────────────────────────────────────────────────────────────────────────
+class _PGRow:
+    """
+    Wraps a psycopg2 RealDictRow to support both dict-style (row["col"])
+    and integer-index (row[0]) access — needed for COUNT(*) results.
+    """
+    def __init__(self, real_dict_row):
+        self._row  = real_dict_row
+        self._keys = list(real_dict_row.keys()) if real_dict_row else []
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return self._row[self._keys[key]]
+        return self._row[key]
+
+    def __contains__(self, key):
+        return key in self._row
+
+    def keys(self):
+        return self._keys
+
+    def get(self, key, default=None):
+        return self._row.get(key, default)
+
+    def __repr__(self):
+        return repr(dict(self._row))
+
+
+# ── _DB wrapper ───────────────────────────────────────────────────────────────
 
 class _DB:
-    """
-    Wraps a raw DB connection and exposes .execute() with:
-      - ? placeholders (converted to %s for postgres automatically)
-      - dict-like rows (RealDictCursor for pg; sqlite3.Row for sqlite)
-      - .lastrowid working correctly for INSERT on both backends
-    """
-
-    def __init__(self, conn, db_type: str):
+    def __init__(self, conn, db_type):
         self._conn    = conn
         self._db_type = db_type
 
-    # -- internal --
-
-    def _adapt(self, sql: str, params):
+    def execute(self, sql: str, params=()):
         if self._db_type == "postgres":
             sql = sql.replace("?", "%s")
-        return sql, params
-
-    def _cursor(self):
-        if self._db_type == "postgres":
-            import psycopg2.extras
-            return self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        return self._conn.cursor()
-
-    # -- public --
-
-    def execute(self, sql: str, params=()):
-        sql, params = self._adapt(sql, params)
-
-        # For postgres INSERTs we need RETURNING id so lastrowid works
-        if self._db_type == "postgres":
+            # Append RETURNING id to INSERTs so lastrowid works
             stripped = sql.strip().upper()
             if stripped.startswith("INSERT") and "RETURNING" not in stripped:
                 sql = sql.rstrip("; \t\n") + " RETURNING id"
-
-        cur = self._cursor()
-        cur.execute(sql, params or ())
-        return _Cursor(cur, self._db_type)
+            import psycopg2.extras
+            cur = self._conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur.execute(sql, params or ())
+            wrapper = _Cursor(cur, self._db_type)
+            # Pre-fetch the RETURNING id row now so the cursor isn't consumed later
+            if stripped.startswith("INSERT"):
+                row = cur.fetchone()
+                wrapper._raw._lastid = row["id"] if row else None
+            return wrapper
+        else:
+            cur = self._conn.cursor()
+            cur.execute(sql, params or ())
+            return _Cursor(cur, self._db_type)
 
     def executescript(self, ddl: str):
-        """Run multi-statement DDL (CREATE TABLE …)."""
         if self._db_type == "postgres":
             cur = self._conn.cursor()
             for stmt in (s.strip() for s in ddl.split(";") if s.strip()):
@@ -125,17 +118,14 @@ class _DB:
         self._conn.rollback()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Per-request connection
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Per-request connection ────────────────────────────────────────────────────
 
 def get_db() -> _DB:
     if "db" not in g:
         url = current_app.config["DATABASE_URL"]
-
         if _is_postgres(url):
             import psycopg2
-            conn = psycopg2.connect(_fix_pg_url(url))
+            conn = psycopg2.connect(_pg_url(url))
             conn.autocommit = False
             g.db      = conn
             g.db_type = "postgres"
@@ -146,24 +136,24 @@ def get_db() -> _DB:
             conn.execute("PRAGMA foreign_keys=ON")
             g.db      = conn
             g.db_type = "sqlite"
-
     return _DB(g.db, g.db_type)
 
 
 def close_db(e=None):
-    conn    = g.pop("db", None)
-    db_type = g.pop("db_type", "sqlite")
+    conn = g.pop("db", None)
+    g.pop("db_type", None)
     if conn is not None:
         try:
             conn.commit()
         except Exception:
             pass
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Schema — separate DDL for each backend
-# ─────────────────────────────────────────────────────────────────────────────
+# ── Schema ────────────────────────────────────────────────────────────────────
 
 _SCHEMA_SQLITE = """
 CREATE TABLE IF NOT EXISTS users (
@@ -263,10 +253,22 @@ CREATE INDEX IF NOT EXISTS idx_order_items_ord ON order_items(order_id);
 
 
 def init_db(app):
-    """Create all tables (idempotent — safe to run on every deploy)."""
+    """Create all tables — idempotent, safe on every boot."""
     with app.app_context():
-        db  = get_db()
         url = app.config["DATABASE_URL"]
-        ddl = _SCHEMA_POSTGRES if _is_postgres(url) else _SCHEMA_SQLITE
-        db.executescript(ddl)
-        db.commit()
+        if _is_postgres(url):
+            import psycopg2
+            conn = psycopg2.connect(_pg_url(url))
+            conn.autocommit = False
+            db = _DB(conn, "postgres")
+        else:
+            conn = sqlite3.connect(url, detect_types=sqlite3.PARSE_DECLTYPES)
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA foreign_keys=ON")
+            db = _DB(conn, "sqlite")
+        try:
+            ddl = _SCHEMA_POSTGRES if _is_postgres(url) else _SCHEMA_SQLITE
+            db.executescript(ddl)
+            db.commit()
+        finally:
+            conn.close()

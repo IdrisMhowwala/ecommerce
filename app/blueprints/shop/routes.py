@@ -22,20 +22,19 @@ def cart_item_count() -> int:
 
 
 def build_cart_items(db):
-    """Resolve cart product_ids to rows; return (items_list, total)."""
     cart  = get_cart()
     items = []
     total = 0.0
     for pid_str, qty in list(cart.items()):
         row = db.execute(
-            "SELECT * FROM products WHERE id=? AND is_active=1", (int(pid_str),)
+            "SELECT * FROM products WHERE id=? AND is_active=TRUE", (int(pid_str),)
         ).fetchone()
         if row:
             subtotal = float(row["price"]) * qty
             items.append({"product": row, "qty": qty, "subtotal": subtotal})
             total += subtotal
         else:
-            cart.pop(pid_str)  # clean stale entries
+            cart.pop(pid_str)
     save_cart(cart)
     return items, round(total, 2)
 
@@ -51,7 +50,7 @@ def cart_count():
 def index():
     db       = get_db()
     featured = db.execute(
-        "SELECT * FROM products WHERE is_active=1 ORDER BY id DESC LIMIT 8"
+        "SELECT * FROM products WHERE is_active=TRUE ORDER BY id DESC LIMIT 8"
     ).fetchall()
     return render_template("shop/index.html", featured=featured)
 
@@ -65,12 +64,12 @@ def shop():
 
     if q:
         rows = db.execute(
-            "SELECT * FROM products WHERE is_active=1 AND (name LIKE ? OR description LIKE ?) ORDER BY name",
+            "SELECT * FROM products WHERE is_active=TRUE AND (name LIKE ? OR description LIKE ?) ORDER BY name",
             (f"%{q}%", f"%{q}%"),
         ).fetchall()
     else:
         rows = db.execute(
-            "SELECT * FROM products WHERE is_active=1 ORDER BY id DESC"
+            "SELECT * FROM products WHERE is_active=TRUE ORDER BY id DESC"
         ).fetchall()
 
     total_count = len(rows)
@@ -90,7 +89,7 @@ def shop():
 def product_detail(product_id):
     db  = get_db()
     row = db.execute(
-        "SELECT * FROM products WHERE id=? AND is_active=1", (product_id,)
+        "SELECT * FROM products WHERE id=? AND is_active=TRUE", (product_id,)
     ).fetchone()
     if not row:
         abort(404)
@@ -110,7 +109,7 @@ def cart():
 def add_to_cart(product_id):
     db  = get_db()
     row = db.execute(
-        "SELECT * FROM products WHERE id=? AND is_active=1", (product_id,)
+        "SELECT * FROM products WHERE id=? AND is_active=TRUE", (product_id,)
     ).fetchone()
     if not row:
         abort(404)
@@ -176,7 +175,6 @@ def checkout():
     if request.method == "POST":
         user = get_current_user()
 
-        # Verify stock once more and lock
         errors = []
         for item in items:
             p = db.execute(
@@ -205,13 +203,13 @@ def checkout():
                 (order_id, item["product"]["id"], item["qty"], float(item["product"]["price"])),
             )
             db.execute(
-                "UPDATE products SET stock = stock - ?, updated_at = datetime('now') WHERE id=?",
+                "UPDATE products SET stock = stock - ? WHERE id=?",
                 (item["qty"], item["product"]["id"]),
             )
 
         db.commit()
         session.pop("cart", None)
-        flash(f"Order #{order_id} placed successfully! We'll notify you when it ships.", "success")
+        flash(f"Order #{order_id} placed successfully!", "success")
         return redirect(url_for("shop.order_detail", order_id=order_id))
 
     return render_template("shop/checkout.html", items=items, total=total)

@@ -68,11 +68,12 @@ def product_new():
     form   = {}
 
     if request.method == "POST":
-        form = request.form
+        form        = request.form
         name        = form.get("name", "").strip()
         description = form.get("description", "").strip()
         price_str   = form.get("price", "")
         stock_str   = form.get("stock", "0")
+        is_active   = True if form.get("is_active") else False
 
         if not name:
             errors.append("Product name is required.")
@@ -96,13 +97,14 @@ def product_new():
             image_url = save_image(request.files.get("image"))
             db.execute(
                 "INSERT INTO products (name, description, price, stock, image_url, is_active) VALUES (?,?,?,?,?,?)",
-                (name, description, price, stock, image_url, 1),
+                (name, description, price, stock, image_url, is_active),
             )
             db.commit()
             flash("Product created successfully.", "success")
             return redirect(url_for("admin.products"))
 
-    return render_template("admin/product_form.html", errors=errors, form=form, title="New Product", product=None)
+    return render_template("admin/product_form.html", errors=errors, form=form,
+                           title="New Product", product=None)
 
 
 @admin_bp.route("/products/<int:product_id>/edit", methods=["GET", "POST"])
@@ -122,7 +124,7 @@ def product_edit(product_id):
         description = form.get("description", "").strip()
         price_str   = form.get("price", "")
         stock_str   = form.get("stock", "0")
-        is_active   = 1 if form.get("is_active") else 0
+        is_active   = True if form.get("is_active") else False
 
         if not name:
             errors.append("Product name is required.")
@@ -145,8 +147,7 @@ def product_edit(product_id):
             image_url = save_image(request.files.get("image")) or product["image_url"]
             db.execute(
                 """UPDATE products
-                   SET name=?, description=?, price=?, stock=?, image_url=?,
-                       is_active=?, updated_at=datetime('now')
+                   SET name=?, description=?, price=?, stock=?, image_url=?, is_active=?
                    WHERE id=?""",
                 (name, description, price, stock, image_url, is_active, product_id),
             )
@@ -164,8 +165,7 @@ def product_edit(product_id):
 @admin_required
 def product_delete(product_id):
     db = get_db()
-    # Soft-delete: mark inactive so order history stays intact
-    db.execute("UPDATE products SET is_active=0 WHERE id=?", (product_id,))
+    db.execute("UPDATE products SET is_active=FALSE WHERE id=?", (product_id,))
     db.commit()
     flash("Product removed from shop.", "info")
     return redirect(url_for("admin.products"))
@@ -223,7 +223,6 @@ def update_order(order_id):
         params.append(payment_status)
 
     if updates:
-        updates.append("updated_at=datetime('now')")
         params.append(order_id)
         db.execute(f"UPDATE orders SET {', '.join(updates)} WHERE id=?", params)
         db.commit()
@@ -248,7 +247,8 @@ def toggle_user(user_id):
     db   = get_db()
     user = db.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
     if user:
-        db.execute("UPDATE users SET is_active=? WHERE id=?", (0 if user["is_active"] else 1, user_id))
+        new_status = not user["is_active"]
+        db.execute("UPDATE users SET is_active=? WHERE id=?", (new_status, user_id))
         db.commit()
-        flash(f"User {'activated' if not user['is_active'] else 'deactivated'}.", "info")
+        flash(f"User {'activated' if new_status else 'deactivated'}.", "info")
     return redirect(url_for("admin.users"))
