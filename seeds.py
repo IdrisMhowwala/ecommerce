@@ -7,7 +7,11 @@ Render Postgres: DATABASE_URL=<your-render-url> python seeds.py
 import os
 import sys
 
-sys.path.insert(0, os.path.dirname(__file__))
+# Ensure the project root is always on sys.path regardless of how/where
+# this script is invoked (handles Render's working directory behaviour).
+ROOT = os.path.dirname(os.path.abspath(__file__))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
 
 from app import create_app
 from app.database import get_db
