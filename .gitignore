@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+instance/
+app/static/img/products/*
+!app/static/img/products/.gitkeep
+.venv/
+venv/
+*.db
+.DS_Store

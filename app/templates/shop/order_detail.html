@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order['id'] }} – FlaskShop{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="{{ url_for('shop.orders') }}">My Orders</a></li>
+      <li class="breadcrumb-item active">Order #{{ order['id'] }}</li>
+    </ol>
+  </nav>
+
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <div class="card border-0 shadow-sm">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center py-3">
+          <h5 class="fw-bold mb-0">Order #{{ order['id'] }} Items</h5>
+          <span class="text-muted small">{{ order['created_at'][:16] }}</span>
+        </div>
+        <div class="card-body p-0">
+          <table class="table align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="ps-4">Product</th>
+                <th class="text-center">Qty</th>
+                <th class="text-center">Unit Price</th>
+                <th class="text-end pe-4">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in items %}
+              <tr>
+                <td class="ps-4">
+                  <div class="d-flex align-items-center gap-2">
+                    {% if item['image_url'] %}
+                    <img src="{{ item['image_url'] }}" alt=""
+                         style="width:40px;height:40px;object-fit:cover;border-radius:6px;">
+                    {% endif %}
+                    <span class="fw-semibold">{{ item['product_name'] }}</span>
+                  </div>
+                </td>
+                <td class="text-center">{{ item['quantity'] }}</td>
+                <td class="text-center text-muted">₹{{ "%.2f"|format(item['price']) }}</td>
+                <td class="text-end pe-4 fw-semibold text-primary">
+                  ₹{{ "%.2f"|format(item['price'] * item['quantity']) }}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="3" class="text-end fw-bold ps-4">Total</td>
+                <td class="text-end pe-4 fw-bold text-primary fs-5">₹{{ "%.2f"|format(order['total_amount']) }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <h6 class="fw-bold mb-3">Order Status</h6>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Payment</span>
+            <span class="badge badge-{{ order['payment_status'] }} px-2 py-1">
+              {{ order['payment_status']|title }}
+            </span>
+          </div>
+          <div class="d-flex justify-content-between mb-2">
+            <span class="text-muted">Fulfilment</span>
+            <span class="badge badge-{{ order['order_status'] }} px-2 py-1">
+              {{ order['order_status']|title }}
+            </span>
+          </div>
+          <hr>
+          <div class="text-muted small">
+            <div class="mb-1"><strong>Ordered:</strong> {{ order['created_at'][:16] }}</div>
+            {% if order['razorpay_order_id'] %}
+            <div class="mb-1 text-truncate"><strong>Razorpay ID:</strong> {{ order['razorpay_order_id'] }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      <a href="{{ url_for('shop.orders') }}" class="btn btn-outline-secondary w-100 mt-3">
+        <i class="bi bi-arrow-left me-1"></i>Back to Orders
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

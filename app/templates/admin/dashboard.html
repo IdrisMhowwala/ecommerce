@@ -1,0 +1,139 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Dashboard – Admin{% endblock %}
+{% block admin_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="fw-bold mb-0">Dashboard</h3>
+  <span class="text-muted small">Welcome, {{ current_user['name'] }}</span>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted small mb-1 text-uppercase fw-semibold" style="letter-spacing:.05em;">Revenue</p>
+            <h3 class="fw-bold mb-0 text-success">₹{{ "%.0f"|format(stats.revenue) }}</h3>
+          </div>
+          <div class="rounded-3 p-2" style="background:#dcfce7;">
+            <i class="bi bi-currency-rupee text-success fs-4"></i>
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0">From paid orders</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted small mb-1 text-uppercase fw-semibold" style="letter-spacing:.05em;">Orders</p>
+            <h3 class="fw-bold mb-0">{{ stats.orders }}</h3>
+          </div>
+          <div class="rounded-3 p-2" style="background:#dbeafe;">
+            <i class="bi bi-bag-check text-primary fs-4"></i>
+          </div>
+        </div>
+        <p class="mb-0 mt-2 small">
+          <span class="text-warning fw-semibold">{{ stats.pending_orders }}</span>
+          <span class="text-muted"> pending</span>
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted small mb-1 text-uppercase fw-semibold" style="letter-spacing:.05em;">Products</p>
+            <h3 class="fw-bold mb-0">{{ stats.products }}</h3>
+          </div>
+          <div class="rounded-3 p-2" style="background:#fef3c7;">
+            <i class="bi bi-box-seam text-warning fs-4"></i>
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0">In catalogue</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-xl-3">
+    <div class="card stat-card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <p class="text-muted small mb-1 text-uppercase fw-semibold" style="letter-spacing:.05em;">Users</p>
+            <h3 class="fw-bold mb-0">{{ stats.users }}</h3>
+          </div>
+          <div class="rounded-3 p-2" style="background:#ede9fe;">
+            <i class="bi bi-people text-purple fs-4" style="color:#7c3aed;"></i>
+          </div>
+        </div>
+        <p class="text-muted small mt-2 mb-0">Registered accounts</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+  <div class="col-auto">
+    <a href="{{ url_for('admin.product_new') }}" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-1"></i>Add Product
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-bag-check me-1"></i>View Orders
+    </a>
+  </div>
+</div>
+
+<!-- Recent Orders -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header bg-transparent fw-semibold py-3 d-flex justify-content-between">
+    <span><i class="bi bi-clock-history me-2"></i>Recent Orders</span>
+    <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-primary btn-sm">View All</a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th class="ps-4">#</th>
+          <th>Customer</th>
+          <th>Total</th>
+          <th>Payment</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in recent_orders %}
+        <tr>
+          <td class="ps-4 fw-semibold">{{ o['id'] }}</td>
+          <td>
+            <div class="small fw-semibold">{{ o['user_name'] }}</div>
+            <div class="text-muted" style="font-size:.75rem;">{{ o['user_email'] }}</div>
+          </td>
+          <td class="fw-semibold text-primary">₹{{ "%.2f"|format(o['total_amount']) }}</td>
+          <td><span class="badge badge-{{ o['payment_status'] }}">{{ o['payment_status']|title }}</span></td>
+          <td><span class="badge badge-{{ o['order_status'] }}">{{ o['order_status']|title }}</span></td>
+          <td class="text-muted small">{{ o['created_at'][:10] }}</td>
+          <td class="pe-3">
+            <a href="{{ url_for('admin.order_detail', order_id=o['id']) }}" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-4">No orders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

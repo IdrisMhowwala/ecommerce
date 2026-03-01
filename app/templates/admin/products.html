@@ -1,0 +1,87 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Products – Admin{% endblock %}
+{% block admin_content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="fw-bold mb-0"><i class="bi bi-box-seam me-2"></i>Products</h3>
+  <a href="{{ url_for('admin.product_new') }}" class="btn btn-primary">
+    <i class="bi bi-plus-lg me-1"></i>Add Product
+  </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th class="ps-4">Product</th>
+          <th>Price</th>
+          <th>Stock</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th class="pe-4 text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in products %}
+        <tr>
+          <td class="ps-4">
+            <div class="d-flex align-items-center gap-3">
+              {% if p['image_url'] %}
+              <img src="{{ p['image_url'] }}" alt="{{ p['name'] }}"
+                   style="width:48px;height:48px;object-fit:cover;border-radius:8px;">
+              {% else %}
+              <div class="rounded bg-light d-flex align-items-center justify-content-center"
+                   style="width:48px;height:48px;">
+                <i class="bi bi-image text-muted small"></i>
+              </div>
+              {% endif %}
+              <div>
+                <div class="fw-semibold">{{ p['name'] }}</div>
+                <div class="text-muted small text-truncate" style="max-width:200px;">{{ p['description'][:60] }}</div>
+              </div>
+            </div>
+          </td>
+          <td class="fw-semibold text-primary">₹{{ "%.2f"|format(p['price']) }}</td>
+          <td>
+            {% if p['stock'] > 10 %}
+            <span class="text-success fw-semibold">{{ p['stock'] }}</span>
+            {% elif p['stock'] > 0 %}
+            <span class="text-warning fw-semibold">{{ p['stock'] }} <small class="text-muted">(low)</small></span>
+            {% else %}
+            <span class="text-danger fw-semibold">0</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p['is_active'] %}
+            <span class="badge bg-success-subtle text-success px-2 py-1">Active</span>
+            {% else %}
+            <span class="badge bg-secondary-subtle text-secondary px-2 py-1">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="text-muted small">{{ p['created_at'][:10] }}</td>
+          <td class="pe-4 text-end">
+            <a href="{{ url_for('admin.product_edit', product_id=p['id']) }}"
+               class="btn btn-outline-primary btn-sm me-1">
+              <i class="bi bi-pencil"></i>
+            </a>
+            <form method="POST"
+                  action="{{ url_for('admin.product_delete', product_id=p['id']) }}"
+                  style="display:inline;"
+                  onsubmit="return confirm('Remove this product from the shop?')">
+              <button type="submit" class="btn btn-outline-danger btn-sm">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-5">
+          No products yet. <a href="{{ url_for('admin.product_new') }}">Add your first product.</a>
+        </td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

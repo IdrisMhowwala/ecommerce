@@ -1,0 +1,103 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ title }} – Admin{% endblock %}
+{% block admin_content %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('admin.products') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h3 class="fw-bold mb-0">{{ title }}</h3>
+</div>
+
+{% if errors %}
+<div class="alert alert-danger mb-4">
+  <ul class="mb-0 ps-3">
+    {% for e in errors %}<li>{{ e }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <form method="POST" enctype="multipart/form-data">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control"
+                   value="{{ form.get('name', '') }}" required placeholder="e.g. Wireless Headphones">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Description</label>
+            <textarea name="description" class="form-control" rows="4"
+                      placeholder="Describe the product...">{{ form.get('description', '') }}</textarea>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Price (₹) <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">₹</span>
+                <input type="number" name="price" class="form-control" step="0.01" min="0"
+                       value="{{ form.get('price', '') }}" required placeholder="0.00">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Stock Quantity</label>
+              <input type="number" name="stock" class="form-control" min="0"
+                     value="{{ form.get('stock', 0) }}" placeholder="0">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Product Image</label>
+            {% if product and product['image_url'] %}
+            <div class="mb-2">
+              <img src="{{ product['image_url'] }}" alt="Current image"
+                   style="height:80px;border-radius:8px;object-fit:cover;">
+              <span class="text-muted small ms-2">Current image</span>
+            </div>
+            {% endif %}
+            <input type="file" name="image" class="form-control" accept="image/*">
+            <div class="form-text">Accepted: JPG, PNG, GIF, WEBP. Max 4MB.</div>
+          </div>
+
+          <div class="mb-4">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="is_active"
+                     id="is_active" {% if form.get('is_active', '1') not in ('0', False, 0) %}checked{% endif %}>
+              <label class="form-check-label fw-semibold" for="is_active">
+                Active (visible in shop)
+              </label>
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary px-4">
+              <i class="bi bi-check-lg me-1"></i>
+              {% if product %}Update Product{% else %}Create Product{% endif %}
+            </button>
+            <a href="{{ url_for('admin.products') }}" class="btn btn-outline-secondary">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm bg-light">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="bi bi-lightbulb me-2 text-warning"></i>Tips</h6>
+        <ul class="small text-muted ps-3">
+          <li class="mb-2">Use high-quality square images (600×600px recommended).</li>
+          <li class="mb-2">Write descriptive product names for better search.</li>
+          <li class="mb-2">Set stock to 0 to show "Out of Stock" badge.</li>
+          <li>Inactive products won't appear in the shop.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

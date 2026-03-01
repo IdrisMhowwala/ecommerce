@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}My Orders – FlaskShop{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <h2 class="fw-bold mb-4"><i class="bi bi-box-seam me-2"></i>My Orders</h2>
+
+  {% if orders %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            <th class="ps-4">Order #</th>
+            <th>Date</th>
+            <th>Total</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+          <tr>
+            <td class="ps-4 fw-semibold">#{{ order['id'] }}</td>
+            <td class="text-muted small">{{ order['created_at'][:16] }}</td>
+            <td class="fw-semibold text-primary">₹{{ "%.2f"|format(order['total_amount']) }}</td>
+            <td>
+              <span class="badge badge-{{ order['payment_status'] }} px-2 py-1">
+                {{ order['payment_status']|title }}
+              </span>
+            </td>
+            <td>
+              <span class="badge badge-{{ order['order_status'] }} px-2 py-1">
+                {{ order['order_status']|title }}
+              </span>
+            </td>
+            <td class="pe-3">
+              <a href="{{ url_for('shop.order_detail', order_id=order['id']) }}"
+                 class="btn btn-outline-primary btn-sm">
+                View <i class="bi bi-chevron-right ms-1"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center py-5">
+    <i class="bi bi-box-seam fs-1 text-muted d-block mb-3"></i>
+    <h4 class="text-muted">No orders yet</h4>
+    <a href="{{ url_for('shop.shop') }}" class="btn btn-primary mt-2">Start Shopping</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

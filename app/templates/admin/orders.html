@@ -1,0 +1,47 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Orders – Admin{% endblock %}
+{% block admin_content %}
+
+<h3 class="fw-bold mb-4"><i class="bi bi-bag-check me-2"></i>Orders</h3>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th class="ps-4">#</th>
+          <th>Customer</th>
+          <th>Total</th>
+          <th>Payment</th>
+          <th>Status</th>
+          <th>Date</th>
+          <th class="pe-4 text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for o in orders %}
+        <tr>
+          <td class="ps-4 fw-semibold">{{ o['id'] }}</td>
+          <td>
+            <div class="fw-semibold small">{{ o['user_name'] }}</div>
+            <div class="text-muted" style="font-size:.75rem;">{{ o['user_email'] }}</div>
+          </td>
+          <td class="fw-semibold text-primary">₹{{ "%.2f"|format(o['total_amount']) }}</td>
+          <td><span class="badge badge-{{ o['payment_status'] }}">{{ o['payment_status']|title }}</span></td>
+          <td><span class="badge badge-{{ o['order_status'] }}">{{ o['order_status']|title }}</span></td>
+          <td class="text-muted small">{{ o['created_at'][:10] }}</td>
+          <td class="pe-4 text-end">
+            <a href="{{ url_for('admin.order_detail', order_id=o['id']) }}"
+               class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-eye me-1"></i>Manage
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center text-muted py-5">No orders yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

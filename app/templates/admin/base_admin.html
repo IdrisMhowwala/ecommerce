@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block navbar %}
+<nav class="navbar navbar-dark" style="background:#0f172a;">
+  <div class="container-fluid px-3">
+    <a class="navbar-brand fw-bold" href="{{ url_for('shop.index') }}">
+      <i class="bi bi-bag-heart-fill text-primary"></i> FlaskShop
+      <span class="badge bg-danger ms-2 small" style="font-size:.6rem;">ADMIN</span>
+    </a>
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ url_for('shop.shop') }}" class="text-white-50 text-decoration-none small">
+        <i class="bi bi-arrow-left me-1"></i>View Store
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="text-white-50 text-decoration-none small">
+        <i class="bi bi-box-arrow-right me-1"></i>Sign Out
+      </a>
+    </div>
+  </div>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex" style="min-height:calc(100vh - 56px);">
+  <!-- Sidebar -->
+  <div class="admin-sidebar" style="width:220px;flex-shrink:0;">
+    <div class="pt-3 pb-2 px-3">
+      <div class="text-white-50 small fw-semibold text-uppercase" style="letter-spacing:.08em;">
+        Admin Panel
+      </div>
+    </div>
+    <nav class="nav flex-column pb-4">
+      <a href="{{ url_for('admin.dashboard') }}"
+         class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+        <i class="bi bi-speedometer2 me-2"></i>Dashboard
+      </a>
+      <a href="{{ url_for('admin.products') }}"
+         class="nav-link {% if 'admin.product' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-box-seam me-2"></i>Products
+      </a>
+      <a href="{{ url_for('admin.orders') }}"
+         class="nav-link {% if 'admin.order' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-bag-check me-2"></i>Orders
+      </a>
+      <a href="{{ url_for('admin.users') }}"
+         class="nav-link {% if request.endpoint == 'admin.users' %}active{% endif %}">
+        <i class="bi bi-people me-2"></i>Users
+      </a>
+    </nav>
+  </div>
+
+  <!-- Main -->
+  <div class="flex-grow-1 bg-light">
+    <div class="p-4">
+      {% block admin_content %}{% endblock %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer %}{% endblock %}

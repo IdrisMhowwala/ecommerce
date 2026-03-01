@@ -1,0 +1,108 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Order #{{ order['id'] }} – Admin{% endblock %}
+{% block admin_content %}
+
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('admin.orders') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left"></i>
+  </a>
+  <h3 class="fw-bold mb-0">Order #{{ order['id'] }}</h3>
+  <span class="badge badge-{{ order['order_status'] }} px-3 py-2">{{ order['order_status']|title }}</span>
+</div>
+
+<div class="row g-4">
+  <!-- Items -->
+  <div class="col-lg-7">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent fw-semibold py-3">Order Items</div>
+      <div class="card-body p-0">
+        <table class="table align-middle mb-0">
+          <thead>
+            <tr>
+              <th class="ps-4">Product</th>
+              <th class="text-center">Qty</th>
+              <th class="text-center">Price</th>
+              <th class="text-end pe-4">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td class="ps-4 fw-semibold">{{ item['product_name'] }}</td>
+              <td class="text-center">{{ item['quantity'] }}</td>
+              <td class="text-center text-muted">₹{{ "%.2f"|format(item['price']) }}</td>
+              <td class="text-end pe-4 fw-semibold text-primary">
+                ₹{{ "%.2f"|format(item['price'] * item['quantity']) }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="3" class="text-end fw-bold ps-4">Total</td>
+              <td class="text-end pe-4 fw-bold text-primary">₹{{ "%.2f"|format(order['total_amount']) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="col-lg-5">
+    <!-- Customer -->
+    <div class="card border-0 shadow-sm mb-3">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="bi bi-person me-2 text-primary"></i>Customer</h6>
+        <p class="mb-1 fw-semibold">{{ order['user_name'] }}</p>
+        <p class="mb-0 text-muted small">{{ order['user_email'] }}</p>
+      </div>
+    </div>
+
+    <!-- Update Status -->
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="bi bi-gear me-2 text-warning"></i>Update Status</h6>
+        <form method="POST" action="{{ url_for('admin.update_order', order_id=order['id']) }}">
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Order Status</label>
+            <select name="order_status" class="form-select form-select-sm">
+              {% for s in ['placed','confirmed','processing','shipped','delivered','cancelled'] %}
+              <option value="{{ s }}" {% if order['order_status'] == s %}selected{% endif %}>
+                {{ s|title }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Payment Status</label>
+            <select name="payment_status" class="form-select form-select-sm">
+              {% for s in ['pending','paid','failed','refunded'] %}
+              <option value="{{ s }}" {% if order['payment_status'] == s %}selected{% endif %}>
+                {{ s|title }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 btn-sm">
+            <i class="bi bi-check-lg me-1"></i>Update Order
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Meta -->
+    <div class="card border-0 shadow-sm mt-3">
+      <div class="card-body small text-muted">
+        <div class="mb-1"><strong>Created:</strong> {{ order['created_at'][:16] }}</div>
+        {% if order['updated_at'] %}
+        <div class="mb-1"><strong>Updated:</strong> {{ order['updated_at'][:16] }}</div>
+        {% endif %}
+        {% if order['razorpay_order_id'] %}
+        <div class="text-truncate"><strong>Razorpay:</strong> {{ order['razorpay_order_id'] }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
